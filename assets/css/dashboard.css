@@ -1,0 +1,4 @@
+/* assets/css/dashboard.css — Extra dashboard-specific overrides */
+/* Main styles are in auth.css. Add page-specific styles here. */
+
+.dashboard-body { color: #1f2937; }

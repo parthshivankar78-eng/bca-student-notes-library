@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SB Jain - Smart Student Notes Library Dashboard</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- React & ReactDOM CDN -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  
+  <!-- Babel Compiler CDN -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- EmailJS SDK - Real Email Delivery API (free, no backend needed) -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script>
+    // ─── EmailJS Configuration ────────────────────────────────────────────────
+    // HOW TO ENABLE REAL EMAILS:
+    // 1. Go to https://www.emailjs.com and create a FREE account
+    // 2. Add a Gmail/Outlook service → copy "Service ID" → paste below
+    // 3. Create an email template with variables: {{to_email}}, {{subject}}, {{message}}, {{from_name}}
+    //    Copy "Template ID" → paste below
+    // 4. Go to Account → API Keys → copy "Public Key" → paste below
+    // ─────────────────────────────────────────────────────────────────────────
+    window.EMAILJS_CONFIG = {
+      publicKey:  "awqJpcSJdkUfyH12y",   // ← paste your Public Key here (Account → API Keys)
+      serviceId:  "student_bca",               // ✅ Service ID confirmed from dashboard
+      templateId: "template_5u6fvax",  // ← paste your Template ID here
+      configured: true  // set to true after filling publicKey and templateId
+    };
+    // Auto-init EmailJS if configured
+    try {
+      if (window.EMAILJS_CONFIG.publicKey !== "awqJpcSJdkUfyH12y") {
+        emailjs.init({ publicKey: window.EMAILJS_CONFIG.publicKey });
+        window.EMAILJS_CONFIG.configured = true;
+        console.log("✅ EmailJS initialized — real emails will be delivered!");
+      } else {
+        console.warn("⚠️ EmailJS not configured. Open index.html and fill EMAILJS_CONFIG to enable real email delivery.");
+      }
+    } catch(e) { console.warn("EmailJS init error", e); }
+  </script>
+
+  <!-- Tailwind config -->
+  <script src="tailwind-config.js"></script>
+
+  <!-- Custom styles -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-100 transition-colors duration-300 min-h-screen font-sans">
+  <div id="root"></div>
+
+  <script type="text/babel" src="app.js"></script>
+</body>
+</html>

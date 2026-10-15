@@ -1,0 +1,88 @@
+.hero-gradient-bg {
+  background: radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.25) 0%, transparent 40%),
+              radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.25) 0%, transparent 40%),
+              radial-gradient(circle at 50% 50%, rgba(236, 72, 153, 0.15) 0%, transparent 50%);
+}
+.glass-nav {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
+.dark .glass-nav {
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.glass-card {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+}
+.dark .glass-card {
+  background: rgba(30, 41, 59, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+.login-bg {
+  background-image: url('assent/college image.jpg');
+  background-size: cover;
+  background-position: center;
+}
+.login-glass-card {
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+}
+.glow-effect {
+  box-shadow: 0 0 25px -5px rgba(79, 70, 229, 0.5);
+}
+
+/* ---------- Animations & new sections ---------- */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.animate-fadeIn { animation: fadeIn .4s ease both; }
+
+/* Feedback emojis: idle float, pop on tap, wiggle while selected */
+@keyframes emojiFloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes emojiPop { 0% { transform: scale(1); } 30% { transform: scale(1.7) rotate(-14deg); } 60% { transform: scale(.9) rotate(10deg); } 100% { transform: scale(1.2) rotate(0); } }
+@keyframes emojiWiggle { 0%,100% { transform: rotate(0) scale(1.2); } 25% { transform: rotate(-10deg) scale(1.25); } 75% { transform: rotate(10deg) scale(1.25); } }
+.emoji-idle { display: inline-block; animation: emojiFloat 2.4s ease-in-out infinite; }
+button:hover .emoji-idle { animation-duration: .8s; }
+.emoji-selected { display: inline-block; animation: emojiPop .6s ease both, emojiWiggle 1.4s ease-in-out .6s infinite; }
+@keyframes burstUp { 0% { opacity: 1; transform: translate(0,0) scale(.6); } 100% { opacity: 0; transform: translate(var(--dx),-80px) scale(1.3); } }
+.emoji-burst { position: absolute; left: 45%; top: 25%; pointer-events: none; animation: burstUp .9s ease-out forwards; }
+
+/* Scrolling student reviews */
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.marquee { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.marquee-track { display: flex; gap: 1rem; width: max-content; animation: marquee 40s linear infinite; }
+.marquee:hover .marquee-track { animation-play-state: paused; }
+
+/* Blurred background image on Home */
+.home-blur-bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; background: url('assent/college image.jpg') center / cover; filter: blur(10px); transform: scale(1.1); opacity: .5; }
+.dark .home-blur-bg { opacity: .3; }
+
+/* Form inputs & options inside login glass card */
+.login-glass-card select option {
+  background: #0f172a;
+  color: #f8fafc;
+}
+.login-glass-card::-webkit-scrollbar {
+  width: 6px;
+}
+.login-glass-card::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+.login-glass-card::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 8px;
+}
+

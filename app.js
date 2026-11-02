@@ -646,37 +646,18 @@ function App() {
     }
   }, [darkMode]);
 
-  // Load registered users directly from MySQL database on start
-  useEffect(() => {
-    fetch('api.php?action=get_users')
-      .then(r => r.json())
-      .then(data => {
-        if (data.success && Array.isArray(data.users) && data.users.length > 0) {
-          const hydrated = data.users.map(u => {
-            if (u.role === 'Student' && !u.performance) {
-              return { ...u, performance: getStudentPerformance(u) };
-            }
-            return u;
-          });
-          setUsers(hydrated);
-          saveStoredUsers(hydrated);
-        }
-      })
-      .catch(err => console.warn('Could not sync with MySQL database, using local cache:', err));
-  }, []);
-
   const handleLogin = (user) => {
     const updatedUser = user.role === 'Student' ? recordDailyLogin(user) : user;
     setCurrentUser(updatedUser);
     setUsers(prev => {
-      const idx = prev.findIndex(u => u.id === updatedUser.id || u.username === updatedUser.username);
+      const idx = prev.findIndex(u => u.id === updatedUser.id);
       if (idx >= 0) {
         const next = [...prev];
         next[idx] = updatedUser;
         saveStoredUsers(next);
         return next;
       }
-      return [updatedUser, ...prev];
+      return prev;
     });
     setIsLoggedIn(true);
     setActiveTab(updatedUser.role === 'Student' ? 'dashboard' : 'home');
@@ -688,7 +669,7 @@ function App() {
     const updatedUser = recordDailyLogin(currentUser);
     setCurrentUser(updatedUser);
     setUsers(prev => {
-      const idx = prev.findIndex(u => u.id === updatedUser.id || u.username === updatedUser.username);
+      const idx = prev.findIndex(u => u.id === updatedUser.id);
       if (idx >= 0) {
         const next = [...prev];
         next[idx] = updatedUser;
@@ -697,17 +678,6 @@ function App() {
       }
       return prev;
     });
-
-    // Save check-in log entry into MySQL login_logs table
-    fetch('api.php?action=checkin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        user_id: currentUser.db_id || currentUser.id,
-        username: currentUser.username
-      })
-    }).catch(e => console.warn('Checkin log db error:', e));
-
     alert(`🎉 Daily Login Attendance Recorded! +25 XP Bonus awarded. Current streak: ${updatedUser.performance?.loginStreak} days 🔥`);
   };
 
@@ -737,7 +707,7 @@ function App() {
     const updatedUser = { ...currentUser, performance: perf };
     setCurrentUser(updatedUser);
     setUsers(prev => {
-      const idx = prev.findIndex(u => u.id === updatedUser.id || u.username === updatedUser.username);
+      const idx = prev.findIndex(u => u.id === updatedUser.id);
       if (idx >= 0) {
         const next = [...prev];
         next[idx] = updatedUser;
@@ -749,27 +719,16 @@ function App() {
   };
 
   const handleDeleteUser = (userId) => {
-    if (currentUser && (currentUser.id === userId || currentUser.db_id === userId)) {
+    if (currentUser && currentUser.id === userId) {
       alert("You cannot delete your own logged-in account!");
       return;
     }
-    if (confirm("Are you sure you want to remove this user from the directory and database?")) {
-      const userToDelete = users.find(u => u.id === userId || u.db_id === userId);
+    if (confirm("Are you sure you want to remove this user from the directory?")) {
       setUsers(prev => {
-        const updated = prev.filter(u => u.id !== userId && u.db_id !== userId);
+        const updated = prev.filter(u => u.id !== userId);
         saveStoredUsers(updated);
         return updated;
       });
-
-      // Remove from MySQL database
-      fetch('api.php?action=delete_user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: userToDelete?.db_id || userId,
-          username: userToDelete?.username
-        })
-      }).catch(e => console.warn('Delete user db error:', e));
     }
   };
 
@@ -1168,13 +1127,13 @@ function AuthPage({ onLogin, onRegister, users, darkMode, setDarkMode }) {
 
   const [registerError, setRegisterError] = useState('');
 
-  // Sign In submission (connected to MySQL api.php)
-  const handleLoginSubmit = async (e) => {
+  // Sign In submission
+  const handleLoginSubmit = (e) => {
     e.preventDefault();
     setLoginError('');
     setSuccessToast('');
 
-    const query = loginIdentifier.trim();
+    const query = loginIdentifier.trim().toLowerCase();
     const pass = loginPassword.trim();
 
     if (!query || !pass) {
@@ -1182,35 +1141,11 @@ function AuthPage({ onLogin, onRegister, users, darkMode, setDarkMode }) {
       return;
     }
 
-    try {
-      const resp = await fetch('api.php?action=login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          identifier: query,
-          password: pass,
-          role: signInRole
-        })
-      });
-      const data = await resp.json();
-
-      if (data.success && data.user) {
-        onLogin(data.user);
-        return;
-      } else if (data.message) {
-        setLoginError(data.message);
-        return;
-      }
-    } catch (apiErr) {
-      console.warn('API login request error, falling back to local check:', apiErr);
-    }
-
-    // Fallback if offline
     const matched = users.find(u => {
       const roleMatch = u.role.toLowerCase() === signInRole.toLowerCase();
-      const idMatch = (u.username && u.username.toLowerCase() === query.toLowerCase()) ||
-                      (u.studentId && u.studentId.toLowerCase() === query.toLowerCase()) ||
-                      (u.email && u.email.toLowerCase() === query.toLowerCase());
+      const idMatch = (u.username && u.username.toLowerCase() === query) ||
+                      (u.studentId && u.studentId.toLowerCase() === query) ||
+                      (u.email && u.email.toLowerCase() === query);
       return roleMatch && idMatch;
     });
 
@@ -1219,7 +1154,7 @@ function AuthPage({ onLogin, onRegister, users, darkMode, setDarkMode }) {
       return;
     }
 
-    if (matched.password && matched.password !== pass) {
+    if (matched.password !== pass) {
       setLoginError('Incorrect password. Please verify your credentials and try again.');
       return;
     }
@@ -1227,8 +1162,8 @@ function AuthPage({ onLogin, onRegister, users, darkMode, setDarkMode }) {
     onLogin(matched);
   };
 
-  // Student Registration submission (connected to MySQL api.php)
-  const handleStudentSubmit = async (e) => {
+  // Student Registration submission (Strict Privacy for SB Jain BCA)
+  const handleStudentSubmit = (e) => {
     e.preventDefault();
     setRegisterError('');
 
@@ -1246,10 +1181,28 @@ function AuthPage({ onLogin, onRegister, users, darkMode, setDarkMode }) {
       return;
     }
 
-    // Strict BCA Format check: e.g. yourname.bcayear@sbjit.edu.in
+    // Strict BCA Format check: e.g. yourname.bcayear@sbjit.edu.in (e.g. rohit.bca1@sbjit.edu.in or priya.bca2@sbjit.edu.in)
     const localPart = trimmedEmail.split('@')[0];
     if (!localPart.includes('bca')) {
       setRegisterError('Privacy Restriction: Registration is limited strictly to SB Jain BCA Department students (Years 1, 2, 3). Your email must follow: yourname.bcayear@sbjit.edu.in (e.g. rohit.bca1@sbjit.edu.in, sneha.bca2@sbjit.edu.in, aman.bca3@sbjit.edu.in).');
+      return;
+    }
+
+    // One-Time Registration Check: No duplicate emails allowed
+    const duplicateEmail = users.some(u => u.email && u.email.toLowerCase() === trimmedEmail);
+    if (duplicateEmail) {
+      setRegisterError(`Registration Denied: The college email "${email.trim()}" is already registered. Each student can only register one time.`);
+      return;
+    }
+
+    // Check PRN and Username duplicate
+    const exists = users.find(u => 
+      u.username.toLowerCase() === username.trim().toLowerCase() ||
+      (u.studentId && u.studentId.toLowerCase() === studentId.trim().toLowerCase())
+    );
+
+    if (exists) {
+      setRegisterError('An account with this Username or Student PRN is already registered.');
       return;
     }
 
@@ -1263,75 +1216,30 @@ function AuthPage({ onLogin, onRegister, users, darkMode, setDarkMode }) {
       return;
     }
 
-    try {
-      const resp = await fetch('api.php?action=register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          studentId: studentId.trim().toUpperCase(),
-          department: 'BCA (Bachelor of Computer Applications)',
-          semester,
-          email: trimmedEmail,
-          phone: phone.trim() || '+91 90000 00000',
-          username: username.trim(),
-          password: password,
-          role: 'Student'
-        })
-      });
-      const data = await resp.json();
+    const newUser = {
+      id: 'student_' + Date.now(),
+      role: 'Student',
+      name: name.trim(),
+      studentId: studentId.trim().toUpperCase(),
+      department: 'BCA (Bachelor of Computer Applications)',
+      semester,
+      email: trimmedEmail,
+      phone: phone.trim() || '+91 90000 00000',
+      username: username.trim(),
+      password: password,
+      joinedDate: new Date().toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
+    };
 
-      if (!data.success) {
-        setRegisterError(data.message || 'Registration failed in database.');
-        return;
-      }
-
-      const createdUser = data.user || {
-        id: 'student_' + Date.now(),
-        role: 'Student',
-        name: name.trim(),
-        studentId: studentId.trim().toUpperCase(),
-        department: 'BCA (Bachelor of Computer Applications)',
-        semester,
-        email: trimmedEmail,
-        phone: phone.trim() || '+91 90000 00000',
-        username: username.trim(),
-        joinedDate: new Date().toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
-      };
-
-      onRegister(createdUser);
-      setSuccessToast(`🎉 SB Jain BCA Student registered successfully in database for ${createdUser.name}! Please sign in below.`);
-      setActivePanel('signin');
-      setSignInRole('Student');
-      setLoginIdentifier(createdUser.username);
-      setLoginPassword(password);
-      return;
-    } catch (apiErr) {
-      console.warn('API registration error, fallback local save:', apiErr);
-      const newUser = {
-        id: 'student_' + Date.now(),
-        role: 'Student',
-        name: name.trim(),
-        studentId: studentId.trim().toUpperCase(),
-        department: 'BCA (Bachelor of Computer Applications)',
-        semester,
-        email: trimmedEmail,
-        phone: phone.trim() || '+91 90000 00000',
-        username: username.trim(),
-        password: password,
-        joinedDate: new Date().toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
-      };
-      onRegister(newUser);
-      setSuccessToast(`🎉 SB Jain BCA Student registered successfully for ${newUser.name}! Please sign in below.`);
-      setActivePanel('signin');
-      setSignInRole('Student');
-      setLoginIdentifier(newUser.username);
-      setLoginPassword(password);
-    }
+    onRegister(newUser);
+    setSuccessToast(`🎉 SB Jain BCA Student registered successfully for ${newUser.name}! Please sign in below.`);
+    setActivePanel('signin');
+    setSignInRole('Student');
+    setLoginIdentifier(newUser.username);
+    setLoginPassword(password);
   };
 
-  // Admin Registration submission (connected to MySQL api.php)
-  const handleAdminSubmit = async (e) => {
+  // Admin Registration submission (Strict Faculty College Email & One-Time)
+  const handleAdminSubmit = (e) => {
     e.preventDefault();
     setRegisterError('');
 
@@ -1345,7 +1253,14 @@ function AuthPage({ onLogin, onRegister, users, darkMode, setDarkMode }) {
     // College Domain Check: must end with @sbjit.edu.in
     const trimmedEmail = email.trim().toLowerCase();
     if (!trimmedEmail.endsWith('@sbjit.edu.in')) {
-      
+      setRegisterError('Official Domain Error: Faculty must register with official SB Jain institutional email ending with @sbjit.edu.in');
+      return;
+    }
+
+    // One-Time Registration Check: No duplicate emails allowed
+    const duplicateEmail = users.some(u => u.email && u.email.toLowerCase() === trimmedEmail);
+    if (duplicateEmail) {
+      setRegisterError(`Registration Denied: The college email "${email.trim()}" is already registered. Each faculty member can only register one time.`);
       return;
     }
 
@@ -1355,83 +1270,47 @@ function AuthPage({ onLogin, onRegister, users, darkMode, setDarkMode }) {
       return;
     }
 
+    // Check duplicate ID/Username
+    const exists = users.find(u => 
+      u.username.toLowerCase() === username.trim().toLowerCase() ||
+      (u.studentId && u.studentId.toLowerCase() === facultyId.trim().toLowerCase())
+    );
+
+    if (exists) {
+      setRegisterError('An account with this Username or Faculty ID is already registered.');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setRegisterError('Passwords do not match. Please verify your password confirmation.');
       return;
     }
 
     if (password.length < 3) {
-      setRegisterError('Password must be at least 8 characters long.');
+      setRegisterError('Password must be at least 3 characters long.');
       return;
     }
 
-    try {
-      const resp = await fetch('api.php?action=register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          studentId: facultyId.trim().toUpperCase(),
-          facultyId: facultyId.trim().toUpperCase(),
-          department,
-          semester: designation,
-          designation,
-          email: trimmedEmail,
-          phone: phone.trim() || '+91 98000 00000',
-          username: username.trim(),
-          password: password,
-          role: 'Admin'
-        })
-      });
-      const data = await resp.json();
+    const newUser = {
+      id: 'admin_' + Date.now(),
+      role: 'Admin',
+      name: name.trim(),
+      studentId: facultyId.trim().toUpperCase(),
+      department,
+      designation,
+      email: trimmedEmail,
+      phone: phone.trim() || '+91 98000 00000',
+      username: username.trim(),
+      password: password,
+      joinedDate: new Date().toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
+    };
 
-      if (!data.success) {
-        setRegisterError(data.message || 'Registration failed in database.');
-        return;
-      }
-
-      const createdUser = data.user || {
-        id: 'admin_' + Date.now(),
-        role: 'Admin',
-        name: name.trim(),
-        studentId: facultyId.trim().toUpperCase(),
-        department,
-        designation,
-        email: trimmedEmail,
-        phone: phone.trim() || '+91 98000 00000',
-        username: username.trim(),
-        joinedDate: new Date().toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
-      };
-
-      onRegister(createdUser);
-      setSuccessToast(`🎉 Faculty account registered successfully in database for ${createdUser.name}! Please sign in below.`);
-      setActivePanel('signin');
-      setSignInRole('Admin');
-      setLoginIdentifier(createdUser.username);
-      setLoginPassword(password);
-      return;
-    } catch (apiErr) {
-      console.warn('API registration error, fallback local save:', apiErr);
-      const newUser = {
-        id: 'admin_' + Date.now(),
-        role: 'Admin',
-        name: name.trim(),
-        studentId: facultyId.trim().toUpperCase(),
-        department,
-        designation,
-        email: trimmedEmail,
-        phone: phone.trim() || '+91 98000 00000',
-        username: username.trim(),
-        password: password,
-        joinedDate: new Date().toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
-      };
-      onRegister(newUser);
-      setSuccessToast(`🎉 Faculty account registered successfully for ${newUser.name}! Please sign in below.`);
-      setActivePanel('signin');
-      setSignInRole('Admin');
-      setLoginIdentifier(newUser.username);
-      setLoginPassword(password);
-    }
+    onRegister(newUser);
+    setSuccessToast(`🎉 Faculty account registered successfully for ${newUser.name}! Please sign in below.`);
+    setActivePanel('signin');
+    setSignInRole('Admin');
+    setLoginIdentifier(newUser.username);
+    setLoginPassword(password);
   };
 
   const isWideCard = activePanel === 'student_register' || activePanel === 'admin_register';
@@ -1550,7 +1429,7 @@ function AuthPage({ onLogin, onRegister, users, darkMode, setDarkMode }) {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. name surname"
+                    placeholder="e.g. Aarav Sharma"
                     value={studentForm.name}
                     onChange={(e) => setStudentForm({ ...studentForm, name: e.target.value })}
                     className="w-full p-2.5 bg-black/40 border border-white/30 rounded-xl text-xs outline-none focus:ring-2 focus:ring-brand-500 text-white placeholder-slate-400"
@@ -1558,11 +1437,11 @@ function AuthPage({ onLogin, onRegister, users, darkMode, setDarkMode }) {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-200 block mb-1">Student Roll No *</label>
+                  <label className="text-xs font-bold text-slate-200 block mb-1">Student PRN / Roll No *</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. BCyear000"
+                    placeholder="e.g. SBJ2026BCA088"
                     value={studentForm.studentId}
                     onChange={(e) => setStudentForm({ ...studentForm, studentId: e.target.value })}
                     className="w-full p-2.5 bg-black/40 border border-white/30 rounded-xl text-xs outline-none focus:ring-2 focus:ring-brand-500 text-white placeholder-slate-400 uppercase"
@@ -1603,19 +1482,19 @@ function AuthPage({ onLogin, onRegister, users, darkMode, setDarkMode }) {
                 {/* College Email with strict BCA format */}
                 <div className="sm:col-span-2">
                   <label className="text-xs font-bold text-slate-200 block mb-1 flex items-center justify-between">
-                    <span>College Email</span>
-                    <span className="text-[10px] text-amber-300 font-semibold"></span>
+                    <span>College Email (One-time registration) *</span>
+                    <span className="text-[10px] text-amber-300 font-semibold">yourname.bcayear@sbjit.edu.in</span>
                   </label>
                   <input
                     type="email"
                     required
-                    
+                    placeholder="e.g. rohit.bca1@sbjit.edu.in or sneha.bca2@sbjit.edu.in"
                     value={studentForm.email}
                     onChange={(e) => setStudentForm({ ...studentForm, email: e.target.value })}
                     className="w-full p-2.5 bg-black/40 border border-amber-400/40 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-400 text-white placeholder-slate-400"
                   />
                   <p className="text-[10px] text-slate-300 mt-1">
-                    Format: <code className="text-amber-300">yourname.bca26@sbjit.edu.in</code>
+                    Format: <code className="text-amber-300">yourname.bca1@sbjit.edu.in</code> (Year 1), <code className="text-amber-300">yourname.bca2@sbjit.edu.in</code> (Year 2), or <code className="text-amber-300">yourname.bca3@sbjit.edu.in</code> (Year 3).
                   </p>
                 </div>
 
@@ -1635,7 +1514,7 @@ function AuthPage({ onLogin, onRegister, users, darkMode, setDarkMode }) {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. YourName"
+                    placeholder="e.g. aarav_sharma"
                     value={studentForm.username}
                     onChange={(e) => setStudentForm({ ...studentForm, username: e.target.value })}
                     className="w-full p-2.5 bg-black/40 border border-white/30 rounded-xl text-xs outline-none focus:ring-2 focus:ring-brand-500 text-white placeholder-slate-400"
@@ -1649,7 +1528,7 @@ function AuthPage({ onLogin, onRegister, users, darkMode, setDarkMode }) {
                     <input
                       type={showStudentPass ? "text" : "password"}
                       required
-                      placeholder="Minimum 8 characters"
+                      placeholder="Minimum 3 characters"
                       value={studentForm.password}
                       onChange={(e) => setStudentForm({ ...studentForm, password: e.target.value })}
                       className="w-full pl-3 pr-10 py-2.5 bg-black/40 border border-white/30 rounded-xl text-xs outline-none focus:ring-2 focus:ring-brand-500 text-white placeholder-slate-400"
@@ -1747,14 +1626,24 @@ function AuthPage({ onLogin, onRegister, users, darkMode, setDarkMode }) {
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Prof. Namrata Mam's"
+                    placeholder="e.g. Dr. Rajesh Sharma"
                     value={adminForm.name}
                     onChange={(e) => setAdminForm({ ...adminForm, name: e.target.value })}
                     className="w-full p-2.5 bg-black/40 border border-white/30 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-slate-400"
                   />
                 </div>
 
-                
+                <div>
+                  <label className="text-xs font-bold text-slate-200 block mb-1">Faculty / Employee ID *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. FAC-BCA-104"
+                    value={adminForm.facultyId}
+                    onChange={(e) => setAdminForm({ ...adminForm, facultyId: e.target.value })}
+                    className="w-full p-2.5 bg-black/40 border border-white/30 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-slate-400 uppercase"
+                  />
+                </div>
 
                 <div>
                   <label className="text-xs font-bold text-slate-200 block mb-1">Department *</label>
@@ -1794,7 +1683,7 @@ function AuthPage({ onLogin, onRegister, users, darkMode, setDarkMode }) {
                   <input
                     type="email"
                     required
-                    placeholder="e.g. yourname26@sbjit.edu.in"
+                    placeholder="e.g. r.sharma@sbjit.edu.in"
                     value={adminForm.email}
                     onChange={(e) => setAdminForm({ ...adminForm, email: e.target.value })}
                     className="w-full p-2.5 bg-black/40 border border-white/30 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-slate-400"
@@ -1802,13 +1691,27 @@ function AuthPage({ onLogin, onRegister, users, darkMode, setDarkMode }) {
                   <p className="text-[10px] text-slate-300 mt-1">Must end with @sbjit.edu.in (One-time registration)</p>
                 </div>
 
-                
+                <div>
+                  <label className="text-xs font-bold text-slate-200 block mb-1 flex items-center justify-between">
+                    <span>Admin Security Passcode *</span>
+                    <span className="text-[10px] text-amber-300 font-normal">Hint: SBJAIN2026</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter code: SBJAIN2026"
+                    value={adminForm.adminSecret}
+                    onChange={(e) => setAdminForm({ ...adminForm, adminSecret: e.target.value })}
+                    className="w-full p-2.5 bg-black/40 border border-amber-400/40 rounded-xl text-xs outline-none focus:ring-2 focus:ring-amber-400 text-white placeholder-slate-400"
+                  />
+                </div>
+
                 <div>
                   <label className="text-xs font-bold text-slate-200 block mb-1">Admin Username *</label>
                   <input
                     type="text"
                     required
-                    placeholder="e.g. yourname26"
+                    placeholder="e.g. rajesh_sharma"
                     value={adminForm.username}
                     onChange={(e) => setAdminForm({ ...adminForm, username: e.target.value })}
                     className="w-full p-2.5 bg-black/40 border border-white/30 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-slate-400"
@@ -1822,7 +1725,7 @@ function AuthPage({ onLogin, onRegister, users, darkMode, setDarkMode }) {
                     <input
                       type={showAdminPass ? "text" : "password"}
                       required
-                      placeholder="Minimum 8 characters"
+                      placeholder="Minimum 3 characters"
                       value={adminForm.password}
                       onChange={(e) => setAdminForm({ ...adminForm, password: e.target.value })}
                       className="w-full pl-3 pr-10 py-2.5 bg-black/40 border border-white/30 rounded-xl text-xs outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-slate-400"

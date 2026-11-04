@@ -43,23 +43,7 @@ php
    $host = "localhost";
    $user = "root";
    $db   = "library";
-Run the project: open http://localhost/bca-student-library 🎉
-📂 Project Structure
-bca-student-library/
-├── css/             # Stylesheets
-├── js/              # JavaScript files
-├── images/          # Images and icons
-├── database/        # SQL file
-├── db.php           # Database connection
-├── index.php        # Home page
-├── login.php        # Login page
-└── README.md
-📸 Screenshots
 
-Add your screenshots in a screenshots/ folder and link them here.
-
-Home Page	Books Page
-Home	Books
 🔮 Future Improvements
 📧 Email notifications for due dates
 📱 Fully mobile-responsive design

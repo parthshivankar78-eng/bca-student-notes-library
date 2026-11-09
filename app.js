@@ -64,9 +64,22 @@ function FileBadge({ type = 'pdf' }) {
 }
 
 function FileViewer({ file, onClose }) {
+  const [resolvedUrl, setResolvedUrl] = useState(file.fileUrl);
+
+  useEffect(() => {
+    setResolvedUrl(file.fileUrl);
+    if (file.id && (!file.fileUrl || file.fileUrl.includes('dummy.pdf'))) {
+      getFileFromIDB(file.id).then(storedUrl => {
+        if (storedUrl) setResolvedUrl(storedUrl);
+      });
+    }
+  }, [file]);
+
   const type = file.fileType || 'pdf';
   const isImg = ['png', 'jpg', 'jpeg'].includes(type);
   const canEmbed = ['pdf', 'txt'].includes(type);
+  const currentUrl = resolvedUrl || file.fileUrl;
+
   return (
     <div className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex flex-col p-4 md:p-8">
       <div className="flex justify-between items-center text-white mb-4 gap-3">
@@ -76,23 +89,23 @@ function FileViewer({ file, onClose }) {
           <FileBadge type={type} />
         </h3>
         <div className="flex items-center gap-2 shrink-0">
-          <a href={file.fileUrl} download={file.fileName || file.title} className="px-4 py-2 bg-brand-600 hover:bg-brand-700 rounded-xl font-bold text-sm flex items-center gap-1.5">
+          <a href={currentUrl} download={file.fileName || file.title} className="px-4 py-2 bg-brand-600 hover:bg-brand-700 rounded-xl font-bold text-sm flex items-center gap-1.5">
             <Icon name="download" className="w-4 h-4" /><span>Download</span>
           </a>
           <button onClick={onClose} className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-xl font-bold text-sm">Close</button>
         </div>
       </div>
       {canEmbed ? (
-        <iframe src={file.fileUrl} className="w-full flex-1 rounded-2xl bg-white border-none"></iframe>
+        <iframe src={currentUrl} className="w-full flex-1 rounded-2xl bg-white border-none"></iframe>
       ) : isImg ? (
-        <div className="flex-1 flex items-center justify-center overflow-auto"><img src={file.fileUrl} alt={file.title} className="max-w-full max-h-full rounded-2xl" /></div>
+        <div className="flex-1 flex items-center justify-center overflow-auto"><img src={currentUrl} alt={file.title} className="max-w-full max-h-full rounded-2xl" /></div>
       ) : (
         <div className="flex-1 flex items-center justify-center">
           <div className="glass-card p-10 rounded-3xl text-center space-y-4 max-w-md">
             <FileBadge type={type} />
             <h4 className="text-lg font-black">{file.title}</h4>
             <p className="text-xs text-slate-400">Browsers can't preview this file type directly. Download it to open in Word / PowerPoint / Excel.</p>
-            <a href={file.fileUrl} download={file.fileName || file.title} className="inline-flex items-center gap-2 px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-bold">
+            <a href={currentUrl} download={file.fileName || file.title} className="inline-flex items-center gap-2 px-6 py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-sm font-bold">
               <Icon name="download" className="w-4 h-4" /><span>Download File</span>
             </a>
           </div>
@@ -228,16 +241,193 @@ const INITIAL_NOTES = [
   { id: 4, title: "C++ OOP Concepts Notes", subject: "C++", semester: "Semester 2", author: "Prof. K. Verma", downloads: 189, rating: 4.7, fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" }
 ];
 
+const APTITUDE_CATEGORIES = [
+  'Quantitative Aptitude',
+  'Logical Reasoning',
+  'Verbal Ability',
+  'Data Interpretation'
+];
+
+const CATEGORY_META = {
+  'Quantitative Aptitude': { label: 'Quantitative Aptitude', icon: '🧮', cls: 'bg-blue-500/10 text-blue-500 border-blue-500/30' },
+  'Logical Reasoning': { label: 'Logical Reasoning', icon: '🧩', cls: 'bg-purple-500/10 text-purple-500 border-purple-500/30' },
+  'Verbal Ability': { label: 'Verbal Ability', icon: '📝', cls: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' },
+  'Data Interpretation': { label: 'Data Interpretation', icon: '📈', cls: 'bg-amber-500/10 text-amber-500 border-amber-500/30' }
+};
+
+function AptitudeCategoryBadge({ category = 'Quantitative Aptitude' }) {
+  const meta = CATEGORY_META[category] || { label: category, icon: '⚡', cls: 'bg-brand-500/10 text-brand-500 border-brand-500/30' };
+  return (
+    <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider border ${meta.cls}`}>
+      <span>{meta.icon}</span>
+      <span>{meta.label}</span>
+    </span>
+  );
+}
+
 const INITIAL_QUESTIONS = [
-  { id: 1, question: "Which data structure operates on a Last-In, First-Out (LIFO) basis?", options: ["Queue", "Stack", "Array", "Linked List"], correct: 1 },
-  { id: 2, question: "What does SQL stand for?", options: ["Structured Query Language", "Sequential Query List", "Simple Question Logic", "Server Query Link"], correct: 0 },
-  { id: 3, question: "Which keyword is used to inherit a class in Java?", options: ["implements", "extends", "inherits", "super"], correct: 1 },
-  { id: 4, question: "What is the time complexity of searching in a Balanced Binary Search Tree (BST)?", options: ["O(1)", "O(n)", "O(log n)", "O(n²)"], correct: 2 }
+  // Quantitative Aptitude
+  {
+    id: 1,
+    category: 'Quantitative Aptitude',
+    question: "If a person sells an article for ₹540 and makes a 20% profit, what was the original cost price?",
+    options: ["₹420", "₹450", "₹480", "₹500"],
+    correct: 1,
+    explanation: "Cost Price = (Selling Price * 100) / (100 + Profit%) = (540 * 100) / 120 = ₹450."
+  },
+  {
+    id: 2,
+    category: 'Quantitative Aptitude',
+    question: "A train running at 72 km/h crosses a pole in 15 seconds. What is the length of the train?",
+    options: ["250 meters", "300 meters", "350 meters", "200 meters"],
+    correct: 1,
+    explanation: "Speed in m/s = 72 * (5/18) = 20 m/s. Length = Speed * Time = 20 * 15 = 300 meters."
+  },
+  {
+    id: 3,
+    category: 'Quantitative Aptitude',
+    question: "A and B together can complete a project in 12 days. If A alone takes 20 days, how many days will B take alone?",
+    options: ["25 days", "30 days", "35 days", "28 days"],
+    correct: 1,
+    explanation: "1/B = 1/12 - 1/20 = (5 - 3)/60 = 2/60 = 1/30. Therefore, B alone takes 30 days."
+  },
+
+  // Logical Reasoning
+  {
+    id: 4,
+    category: 'Logical Reasoning',
+    question: "Find the next number in the logical sequence: 3, 7, 15, 31, 63, ?",
+    options: ["126", "127", "128", "131"],
+    correct: 1,
+    explanation: "Pattern is (previous * 2) + 1: (63 * 2) + 1 = 127."
+  },
+  {
+    id: 5,
+    category: 'Logical Reasoning',
+    question: "Pointing to a man, a woman said, 'His mother is the only daughter of my mother.' How is the woman related to the man?",
+    options: ["Sister", "Mother", "Aunt", "Daughter"],
+    correct: 1,
+    explanation: "'Only daughter of my mother' is the woman herself. Therefore, she is the man's mother."
+  },
+  {
+    id: 6,
+    category: 'Logical Reasoning',
+    question: "In a certain code, 'ROAD' is written as 'URDG'. How is 'SWAN' encoded in that pattern?",
+    options: ["VXDO", "VZDQ", "VZCQ", "UXDP"],
+    correct: 1,
+    explanation: "Each letter is shifted forward by +3 positions: S(+3)->V, W(+3)->Z, A(+3)->D, N(+3)->Q => VZDQ."
+  },
+
+  // Verbal Ability
+  {
+    id: 7,
+    category: 'Verbal Ability',
+    question: "Select the most accurate synonym for the word 'METICULOUS':",
+    options: ["Careless", "Thorough & Precise", "Hasty", "Indifferent"],
+    correct: 1,
+    explanation: "'Meticulous' means taking extreme care about minute details; thorough and precise."
+  },
+  {
+    id: 8,
+    category: 'Verbal Ability',
+    question: "Choose the correct preposition: 'The student was congratulated ______ securing top campus placement.'",
+    options: ["for", "on", "with", "about"],
+    correct: 1,
+    explanation: "The standard English idiom after 'congratulate' is 'on' (or upon)."
+  },
+  {
+    id: 9,
+    category: 'Verbal Ability',
+    question: "Select the exact antonym for the word 'EPHEMERAL':",
+    options: ["Transient", "Permanent", "Fleeting", "Fragile"],
+    correct: 1,
+    explanation: "'Ephemeral' describes something lasting for a very short time. The opposite is 'Permanent'."
+  },
+
+  // Data Interpretation
+  {
+    id: 10,
+    category: 'Data Interpretation',
+    question: "In a batch of 120 BCA students, 60% passed in DBMS, 70% passed in Web Tech, and 50% passed in both. How many failed in both?",
+    options: ["12 students", "24 students", "18 students", "30 students"],
+    correct: 1,
+    explanation: "Passed at least one = 60% + 70% - 50% = 80%. Failed both = 100% - 80% = 20%. 20% of 120 = 24 students."
+  },
+  {
+    id: 11,
+    category: 'Data Interpretation',
+    question: "Placement records show BCA offers: 2023: 80 offers, 2024: 100 offers, 2025: 125 offers. What is the percentage increase from 2023 to 2025?",
+    options: ["45.25%", "56.25%", "50.00%", "60.50%"],
+    correct: 1,
+    explanation: "Percentage increase = ((125 - 80) / 80) * 100 = (45 / 80) * 100 = 56.25%."
+  },
+  {
+    id: 12,
+    category: 'Data Interpretation',
+    question: "A pie chart depicts programming preferences: Python 35%, Java 30%, C++ 20%, Web 15%. What is the central angle for Python?",
+    options: ["108°", "126°", "120°", "135°"],
+    correct: 1,
+    explanation: "Central angle = (35 / 100) * 360° = 126°."
+  }
 ];
 
 const STORAGE_KEY_USERS = 'sbjain_registered_users_v2';
 const STORAGE_KEY_EMAIL_LOGS = 'sbjain_email_logs_v1';
 const STORAGE_KEY_STUDENT_NOTIFICATIONS = 'sbjain_student_notifications_v1';
+const STORAGE_KEY_NOTES = 'sbjain_study_notes_v1';
+const STORAGE_KEY_QUESTIONS = 'sbjain_mock_questions_v1';
+
+// IndexedDB large file storage helper for persisting PDFs, images and documents
+const IDB_NAME = 'SBJainLibraryDB';
+const IDB_STORE = 'notes_files';
+
+function openLibraryDB() {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !window.indexedDB) {
+      resolve(null);
+      return;
+    }
+    try {
+      const req = window.indexedDB.open(IDB_NAME, 1);
+      req.onupgradeneeded = (e) => {
+        const db = e.target.result;
+        if (!db.objectStoreNames.contains(IDB_STORE)) {
+          db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => resolve(null);
+    } catch (err) {
+      resolve(null);
+    }
+  });
+}
+
+async function saveFileToIDB(id, fileUrl) {
+  try {
+    const db = await openLibraryDB();
+    if (!db) return;
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    tx.objectStore(IDB_STORE).put({ id, fileUrl });
+  } catch (e) {
+    console.warn('IDB saveFile error', e);
+  }
+}
+
+async function getFileFromIDB(id) {
+  try {
+    const db = await openLibraryDB();
+    if (!db) return null;
+    return new Promise((resolve) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const req = tx.objectStore(IDB_STORE).get(id);
+      req.onsuccess = () => resolve(req.result ? req.result.fileUrl : null);
+      req.onerror = () => resolve(null);
+    });
+  } catch (e) {
+    return null;
+  }
+}
 
 const INITIAL_DEFAULT_USERS = [
   {
@@ -621,14 +811,134 @@ function saveStoredStudentNotifications(notifs) {
   } catch (err) {}
 }
 
+function getStoredNotes() {
+  try {
+    let notesList = INITIAL_NOTES;
+    const raw = localStorage.getItem(STORAGE_KEY_NOTES);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        notesList = parsed;
+      }
+    }
+
+    // Auto-recover notes that exist in studentNotifications but are missing from notesList
+    try {
+      const notifsRaw = localStorage.getItem(STORAGE_KEY_STUDENT_NOTIFICATIONS);
+      if (notifsRaw) {
+        const notifs = JSON.parse(notifsRaw);
+        if (Array.isArray(notifs)) {
+          let updated = false;
+          notifs.forEach(n => {
+            if (n.type === 'Study Note' && n.title) {
+              const cleanTitle = n.title.trim().toLowerCase();
+              const exists = notesList.some(item => (item.title || '').trim().toLowerCase() === cleanTitle);
+              if (!exists) {
+                const ext = getExt(n.fileName || 'pdf');
+                notesList.unshift({
+                  id: Date.now() + Math.floor(Math.random() * 10000),
+                  title: n.title,
+                  subject: n.subject || 'BCA Study Resource',
+                  semester: 'Semester 2',
+                  author: n.author || 'Faculty',
+                  downloads: 0,
+                  rating: 5.0,
+                  fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+                  fileType: ext,
+                  fileName: n.fileName || `${n.title.replace(/\s+/g, '_').toLowerCase()}.${ext}`
+                });
+                updated = true;
+              }
+            }
+          });
+          if (updated) {
+            saveStoredNotes(notesList);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Auto-sync from notifications error', e);
+    }
+
+    return notesList;
+  } catch (err) {
+    return INITIAL_NOTES;
+  }
+}
+
+function saveStoredNotes(notesList) {
+  try {
+    localStorage.setItem(STORAGE_KEY_NOTES, JSON.stringify(notesList));
+  } catch (err) {
+    console.warn('LocalStorage save error, attempting safe stripped save', err);
+    try {
+      // Strip large base64 data URLs to avoid QuotaExceededError
+      const safeNotes = notesList.map(n => {
+        if (n.fileUrl && n.fileUrl.startsWith('data:') && n.fileUrl.length > 100000) {
+          return { ...n, fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" };
+        }
+        return n;
+      });
+      localStorage.setItem(STORAGE_KEY_NOTES, JSON.stringify(safeNotes));
+    } catch (innerErr) {
+      console.error('Failed to save notes to localStorage', innerErr);
+    }
+  }
+}
+
+function getStoredQuestions() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_QUESTIONS);
+    if (!raw) {
+      localStorage.setItem(STORAGE_KEY_QUESTIONS, JSON.stringify(INITIAL_QUESTIONS));
+      return INITIAL_QUESTIONS;
+    }
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      // Ensure all questions carry a recognized category
+      const hydrated = parsed.map((q, idx) => ({
+        ...q,
+        category: (q.category && APTITUDE_CATEGORIES.includes(q.category)) 
+          ? q.category 
+          : APTITUDE_CATEGORIES[idx % APTITUDE_CATEGORIES.length]
+      }));
+
+      // If any of the 4 standard categories are missing, bring them in from INITIAL_QUESTIONS
+      const categoriesPresent = new Set(hydrated.map(q => q.category));
+      const missingCats = APTITUDE_CATEGORIES.filter(c => !categoriesPresent.has(c));
+      if (missingCats.length > 0) {
+        INITIAL_QUESTIONS.forEach(defQ => {
+          if (missingCats.includes(defQ.category) && !hydrated.some(h => h.question === defQ.question)) {
+            hydrated.push(defQ);
+          }
+        });
+      }
+      localStorage.setItem(STORAGE_KEY_QUESTIONS, JSON.stringify(hydrated));
+      return hydrated;
+    }
+    return INITIAL_QUESTIONS;
+  } catch (err) {
+    return INITIAL_QUESTIONS;
+  }
+}
+
+function saveStoredQuestions(qList) {
+  try {
+    localStorage.setItem(STORAGE_KEY_QUESTIONS, JSON.stringify(qList));
+  } catch (err) {
+    console.error('Failed to save questions in localStorage', err);
+  }
+}
+
 function App() {
   const [users, setUsers] = useState(getStoredUsers);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [darkMode, setDarkMode] = useState(true);
   const [activeTab, setActiveTab] = useState('home');
-  const [notes, setNotes] = useState(INITIAL_NOTES);
-  const [questions, setQuestions] = useState(INITIAL_QUESTIONS);
+  const [notes, setNotes] = useState(getStoredNotes);
+  const [questions, setQuestions] = useState(getStoredQuestions);
+  const [aptitudeCategory, setAptitudeCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [bookmarks, setBookmarks] = useState([1, 2]);
   const [previewFile, setPreviewFile] = useState(null);
@@ -773,22 +1083,38 @@ function App() {
   };
 
   const handleAddNote = (newNote) => {
-    setNotes(prev => [newNote, ...prev]);
+    setNotes(prev => {
+      const updated = [newNote, ...prev];
+      saveStoredNotes(updated);
+      return updated;
+    });
   };
 
   const handleDeleteNote = (id) => {
     if (confirm("Are you sure you want to delete this resource?")) {
-      setNotes(prev => prev.filter(note => note.id !== id));
+      setNotes(prev => {
+        const updated = prev.filter(note => note.id !== id);
+        saveStoredNotes(updated);
+        return updated;
+      });
     }
   };
 
   const handleAddQuestion = (newQ) => {
-    setQuestions(prev => [...prev, newQ]);
+    setQuestions(prev => {
+      const updated = [...prev, newQ];
+      saveStoredQuestions(updated);
+      return updated;
+    });
   };
 
   const handleDeleteQuestion = (id) => {
     if (confirm("Are you sure you want to delete this question?")) {
-      setQuestions(prev => prev.filter(q => q.id !== id));
+      setQuestions(prev => {
+        const updated = prev.filter(q => q.id !== id);
+        saveStoredQuestions(updated);
+        return updated;
+      });
     }
   };
 
@@ -796,7 +1122,7 @@ function App() {
     { id: 'home', label: 'Home', icon: 'sparkles' },
     { id: 'dashboard', label: 'Dashboard', icon: 'dashboard' },
     { id: 'notes', label: 'Notes Library', icon: 'book' },
-    { id: 'mocktest', label: 'Mock Tests', icon: 'test' },
+    { id: 'mocktest', label: 'Aptitude Tests', icon: 'test' },
     { id: 'admin', label: 'Admin Panel', icon: 'admin', adminOnly: true }
   ];
 
@@ -912,7 +1238,7 @@ function App() {
                       <p className="text-xs text-slate-400 text-center py-4">No new email alerts received yet.</p>
                     ) : (
                       studentNotifications.map(n => (
-                        <div key={n.id} className="p-3 rounded-2xl bg-slate-100/70 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 space-y-1">
+                        <div key={n.id} className="p-3 rounded-2xl bg-slate-100/70 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/60 space-y-2">
                           <div className="flex justify-between items-start text-[10px]">
                             <span className="font-bold text-brand-500 uppercase">{n.type}</span>
                             <span className="text-slate-400">{n.timestamp}</span>
@@ -921,6 +1247,38 @@ function App() {
                           <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-tight">
                             Faculty {n.author} ({n.subject}) • Direct notification dispatched via College Email API
                           </p>
+                          <div className="pt-1 flex items-center justify-between border-t border-slate-200/50 dark:border-slate-700/50">
+                            <span className="text-[10px] text-slate-400 truncate max-w-[130px]">{n.fileName}</span>
+                            {n.type === 'Study Note' ? (
+                              <button
+                                onClick={() => {
+                                  setShowNotifModal(false);
+                                  setActiveTab('notes');
+                                  const match = notes.find(item => (item.title || '').trim().toLowerCase() === (n.title || '').trim().toLowerCase());
+                                  if (match) {
+                                    setPreviewFile(match);
+                                  }
+                                }}
+                                className="px-2.5 py-1 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-[10px] font-bold transition flex items-center space-x-1"
+                              >
+                                <Icon name="eye" className="w-3 h-3" />
+                                <span>View Note</span>
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => {
+                                  setShowNotifModal(false);
+                                  const matchedCat = APTITUDE_CATEGORIES.find(c => (n.subject || '').includes(c) || (n.title || '').includes(c));
+                                  if (matchedCat) setAptitudeCategory(matchedCat);
+                                  setActiveTab('mocktest');
+                                }}
+                                className="px-2.5 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-[10px] font-bold transition flex items-center space-x-1"
+                              >
+                                <Icon name="test" className="w-3 h-3" />
+                                <span>Take Test</span>
+                              </button>
+                            )}
+                          </div>
                         </div>
                       ))
                     )}
@@ -984,7 +1342,13 @@ function App() {
         <main className="p-4 md:p-8 space-y-8 flex-1">
           {activeTab === 'home' && (
             <>
-              <LandingPageView onNavigate={setActiveTab} />
+              <LandingPageView 
+                onNavigate={setActiveTab} 
+                onStartAptitudeCategory={(cat) => {
+                  setAptitudeCategory(cat || 'All');
+                  setActiveTab('mocktest');
+                }}
+              />
               <Footer />
             </>
           )}
@@ -995,6 +1359,7 @@ function App() {
               currentUser={currentUser} 
               studentNotifications={studentNotifications} 
               onNavigate={setActiveTab} 
+              onSelectCategory={setAptitudeCategory}
               onCheckInToday={handleCheckInToday}
             />
           )}
@@ -1005,6 +1370,8 @@ function App() {
             <MockTestView 
               questions={questions} 
               currentUser={currentUser} 
+              selectedCategory={aptitudeCategory}
+              onCategoryChange={setAptitudeCategory}
               onScoreSubmitted={handleMockScoreSubmitted} 
             />
           )}
@@ -1918,7 +2285,7 @@ function AuthPage({ onLogin, onRegister, users, darkMode, setDarkMode }) {
   );
 }
 
-function LandingPageView({ onNavigate }) {
+function LandingPageView({ onNavigate, onStartAptitudeCategory }) {
   const [feedbackRating, setFeedbackRating] = useState(null);
   const [feedbackText, setFeedbackText] = useState('');
   const [submittedFeedback, setSubmittedFeedback] = useState(false);
@@ -1933,10 +2300,10 @@ function LandingPageView({ onNavigate }) {
   ];
 
   const aptitude = [
-    { icon: '🧮', title: 'Quantitative Aptitude', info: 'Percentages, ratios, time & work', q: 25, min: 30 },
-    { icon: '🧩', title: 'Logical Reasoning', info: 'Puzzles, series, seating arrangement', q: 20, min: 25 },
-    { icon: '📝', title: 'Verbal Ability', info: 'Grammar, synonyms, comprehension', q: 20, min: 20 },
-    { icon: '📈', title: 'Data Interpretation', info: 'Charts, tables, graphs', q: 15, min: 25 }
+    { icon: '🧮', title: 'Quantitative Aptitude', info: 'Percentages, ratios, time & work, profit & loss', q: 25, min: 30 },
+    { icon: '🧩', title: 'Logical Reasoning', info: 'Sequences, coding-decoding, relations, syllogisms', q: 20, min: 25 },
+    { icon: '📝', title: 'Verbal Ability', info: 'Vocabulary, grammar, synonyms, comprehension', q: 20, min: 20 },
+    { icon: '📈', title: 'Data Interpretation', info: 'Charts, tables, graphs & statistical analysis', q: 15, min: 25 }
   ];
 
   const handlePick = (value) => {
@@ -1985,11 +2352,14 @@ function LandingPageView({ onNavigate }) {
             </button>
             
             <button 
-              onClick={() => onNavigate('mocktest')} 
+              onClick={() => {
+                if (onStartAptitudeCategory) onStartAptitudeCategory('All');
+                else onNavigate('mocktest');
+              }} 
               className="px-8 py-4 bg-black/30 hover:bg-black/40 backdrop-blur-md border border-white/30 text-white rounded-2xl font-black text-sm hover:scale-105 active:scale-95 transition flex items-center space-x-2"
             >
               <Icon name="test" className="w-5 h-5" />
-              <span>Take Mock Test</span>
+              <span>Take Aptitude Test</span>
             </button>
           </div>
         </div>
@@ -1998,8 +2368,8 @@ function LandingPageView({ onNavigate }) {
       {/* Aptitude Test Section */}
       <section className="space-y-5">
         <div className="text-center space-y-1">
-          <h2 className="text-2xl md:text-3xl font-black">Aptitude Test</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">Practice placement-style aptitude tests, section by section.</p>
+          <h2 className="text-2xl md:text-3xl font-black">Aptitude Test Sections</h2>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Practice placement-style aptitude tests, section by section with live scoring.</p>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {aptitude.map(a => (
@@ -2008,13 +2378,20 @@ function LandingPageView({ onNavigate }) {
                 <span className="text-4xl emoji-idle">{a.icon}</span>
                 <h3 className="font-extrabold text-sm">{a.title}</h3>
                 <p className="text-xs text-slate-400">{a.info}</p>
-                <p className="text-[11px] font-bold text-brand-500">{a.q} Questions • {a.min} min</p>
+                <p className="text-[11px] font-bold text-brand-500">{a.q} Practice Questions • {a.min} min</p>
               </div>
               <button
-                onClick={() => onNavigate('mocktest')}
-                className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl transition"
+                onClick={() => {
+                  if (onStartAptitudeCategory) {
+                    onStartAptitudeCategory(a.title);
+                  } else {
+                    onNavigate('mocktest');
+                  }
+                }}
+                className="w-full py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center space-x-1.5 shadow"
               >
-                Start Test
+                <Icon name="test" className="w-3.5 h-3.5" />
+                <span>Start {a.title.split(' ')[0]}</span>
               </button>
             </div>
           ))}
@@ -2527,10 +2904,18 @@ function DashboardView({ notes, setPreviewFile, currentUser, studentNotification
                   <span className="text-[10px] text-slate-400 truncate max-w-[140px]">File: {notif.fileName}</span>
                   {notif.type === 'Study Note' ? (
                     <button
-                      onClick={() => onNavigate && onNavigate('notes')}
-                      className="px-3 py-1 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-lg text-xs transition"
+                      onClick={() => {
+                        const match = notes.find(n => (n.title || '').trim().toLowerCase() === (notif.title || '').trim().toLowerCase());
+                        if (match && setPreviewFile) {
+                          setPreviewFile(match);
+                        } else if (onNavigate) {
+                          onNavigate('notes');
+                        }
+                      }}
+                      className="px-3 py-1 bg-brand-600 hover:bg-brand-700 text-white font-bold rounded-lg text-xs transition flex items-center space-x-1"
                     >
-                      Open in Notes
+                      <Icon name="eye" className="w-3.5 h-3.5" />
+                      <span>View Note</span>
                     </button>
                   ) : (
                     <button
@@ -2576,60 +2961,154 @@ function DashboardView({ notes, setPreviewFile, currentUser, studentNotification
 }
 
 function NotesView({ notes, bookmarks, toggleBookmark, searchQuery, setPreviewFile }) {
-  const filtered = notes.filter(n => 
-    n.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    n.subject.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const [selectedSemester, setSelectedSemester] = useState('All');
+  const [filterBookmarked, setFilterBookmarked] = useState(false);
+
+  const semesters = ['All', 'Semester 1', 'Semester 2', 'Semester 3', 'Semester 4', 'Semester 5', 'Semester 6'];
+
+  const filtered = notes.filter(n => {
+    const q = (searchQuery || '').trim().toLowerCase();
+    const matchesSearch = !q || 
+      (n.title || '').toLowerCase().includes(q) || 
+      (n.subject || '').toLowerCase().includes(q) ||
+      (n.author || '').toLowerCase().includes(q);
+
+    const matchesSem = selectedSemester === 'All' || n.semester === selectedSemester;
+    const matchesBookmark = !filterBookmarked || bookmarks.includes(n.id);
+
+    return matchesSearch && matchesSem && matchesBookmark;
+  });
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-black">Notes Library</h2>
-          <p className="text-xs text-slate-400">Verified study materials and question papers</p>
+          <p className="text-xs text-slate-400">Verified study materials, syllabus modules and question papers</p>
         </div>
-        <span className="text-xs font-bold px-3 py-1.5 bg-brand-500/10 text-brand-500 rounded-full">
-          {filtered.length} Resources
-        </span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setFilterBookmarked(!filterBookmarked)}
+            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1.5 border ${
+              filterBookmarked 
+                ? 'bg-amber-500 text-white border-amber-500 shadow-sm' 
+                : 'bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300'
+            }`}
+          >
+            <Icon name="bookmark" className={`w-3.5 h-3.5 ${filterBookmarked ? 'fill-white' : ''}`} />
+            <span>Bookmarked ({bookmarks.length})</span>
+          </button>
+          <span className="text-xs font-bold px-3 py-1.5 bg-brand-500/10 text-brand-500 rounded-xl">
+            {filtered.length} {filtered.length === 1 ? 'Resource' : 'Resources'}
+          </span>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {filtered.map(note => (
-          <div key={note.id} className="glass-card p-6 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4 hover:border-brand-500 transition duration-300">
-            <div className="space-y-3">
-              <div className="flex justify-between items-start">
-                <span className="px-2.5 py-1 bg-brand-500/10 text-brand-500 text-[10px] rounded-lg font-black uppercase tracking-wider">
-                  {note.semester}
-                </span>
-                <button onClick={() => toggleBookmark(note.id)}>
-                  <Icon name="bookmark" className={`w-5 h-5 ${bookmarks.includes(note.id) ? 'fill-amber-500 text-amber-500' : 'text-slate-400'}`} />
-                </button>
-              </div>
-              <h3 className="font-extrabold text-base leading-snug">{note.title}</h3>
-              <div className="flex items-center gap-2"><p className="text-xs text-slate-400">Faculty: {note.author}</p><FileBadge type={note.fileType} /></div>
-            </div>
-
-            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
-              <span className="text-xs font-semibold text-slate-400">{note.subject}</span>
-              <button 
-                onClick={() => setPreviewFile(note)}
-                className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1"
-              >
-                <Icon name="eye" className="w-3.5 h-3.5" />
-                <span>View Note</span>
-              </button>
-            </div>
-          </div>
+      {/* Semester filter chips */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {semesters.map(sem => (
+          <button
+            key={sem}
+            onClick={() => setSelectedSemester(sem)}
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-bold shrink-0 transition ${
+              selectedSemester === sem 
+                ? 'bg-brand-600 text-white shadow-md' 
+                : 'bg-slate-100 dark:bg-slate-900/80 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-800'
+            }`}
+          >
+            {sem}
+          </button>
         ))}
       </div>
+
+      {filtered.length === 0 ? (
+        <div className="glass-card p-12 rounded-3xl border border-slate-200 dark:border-slate-800 text-center space-y-4">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-brand-500/10 text-brand-500 flex items-center justify-center">
+            <Icon name="book" className="w-7 h-7" />
+          </div>
+          <div>
+            <h4 className="text-base font-extrabold text-slate-800 dark:text-slate-200">No study materials found</h4>
+            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+              {searchQuery ? `No notes matching "${searchQuery}".` : 'No study materials in this filter.'} Try selecting "All" semesters or clearing filters.
+            </p>
+          </div>
+          {(selectedSemester !== 'All' || filterBookmarked || searchQuery) && (
+            <button
+              onClick={() => { setSelectedSemester('All'); setFilterBookmarked(false); }}
+              className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl transition inline-flex items-center space-x-1"
+            >
+              <span>Reset Filters</span>
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {filtered.map(note => (
+            <div key={note.id} className="glass-card p-6 rounded-3xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between space-y-4 hover:border-brand-500 transition duration-300">
+              <div className="space-y-3">
+                <div className="flex justify-between items-start">
+                  <span className="px-2.5 py-1 bg-brand-500/10 text-brand-500 text-[10px] rounded-lg font-black uppercase tracking-wider">
+                    {note.semester || 'Semester 2'}
+                  </span>
+                  <button onClick={() => toggleBookmark(note.id)}>
+                    <Icon name="bookmark" className={`w-5 h-5 ${bookmarks.includes(note.id) ? 'fill-amber-500 text-amber-500' : 'text-slate-400'}`} />
+                  </button>
+                </div>
+                <h3 className="font-extrabold text-base leading-snug">{note.title}</h3>
+                <div className="flex items-center gap-2">
+                  <p className="text-xs text-slate-400">Faculty: {note.author || 'Faculty'}</p>
+                  <FileBadge type={note.fileType || 'pdf'} />
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-between">
+                <span className="text-xs font-semibold text-slate-400 truncate max-w-[140px]">{note.subject}</span>
+                <button 
+                  onClick={() => setPreviewFile(note)}
+                  className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1"
+                >
+                  <Icon name="eye" className="w-3.5 h-3.5" />
+                  <span>View Note</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-function MockTestView({ questions, currentUser, onScoreSubmitted }) {
+function MockTestView({ questions, currentUser, selectedCategory = 'All', onCategoryChange, onScoreSubmitted }) {
+  const [activeCategory, setActiveCategory] = useState(selectedCategory || 'All');
   const [currentQ, setCurrentQ] = useState(0);
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
+  const [showReview, setShowReview] = useState(false);
+
+  useEffect(() => {
+    if (selectedCategory && selectedCategory !== activeCategory) {
+      setActiveCategory(selectedCategory);
+      setCurrentQ(0);
+      setAnswers({});
+      setSubmitted(false);
+      setShowReview(false);
+    }
+  }, [selectedCategory]);
+
+  const handleCategorySwitch = (cat) => {
+    setActiveCategory(cat);
+    if (onCategoryChange) onCategoryChange(cat);
+    setCurrentQ(0);
+    setAnswers({});
+    setSubmitted(false);
+    setShowReview(false);
+  };
+
+  const activeQuestions = useMemo(() => {
+    if (activeCategory === 'All') return questions;
+    return questions.filter(q => (q.category || 'Quantitative Aptitude') === activeCategory);
+  }, [questions, activeCategory]);
 
   const handleSelectOption = (qId, optionIndex) => {
     if (!submitted) {
@@ -2639,7 +3118,7 @@ function MockTestView({ questions, currentUser, onScoreSubmitted }) {
 
   const calculateScore = () => {
     let score = 0;
-    questions.forEach(q => {
+    activeQuestions.forEach(q => {
       if (answers[q.id] === q.correct) score += 1;
     });
     return score;
@@ -2649,90 +3128,298 @@ function MockTestView({ questions, currentUser, onScoreSubmitted }) {
     setSubmitted(true);
     const finalScore = calculateScore();
     if (onScoreSubmitted) {
-      onScoreSubmitted(finalScore, questions.length);
+      onScoreSubmitted(finalScore, activeQuestions.length);
     }
   };
 
-  if (questions.length === 0) {
-    return (
-      <div className="max-w-3xl mx-auto text-center py-12 glass-card rounded-3xl border border-slate-200 dark:border-slate-800 space-y-3">
-        <h2 className="text-xl font-black">No Mock Questions Available</h2>
-        <p className="text-xs text-slate-400">Please add mock questions via the Admin Panel.</p>
-      </div>
-    );
-  }
+  const handleRetake = () => {
+    setAnswers({});
+    setCurrentQ(0);
+    setSubmitted(false);
+    setShowReview(false);
+  };
 
   const finalScore = calculateScore();
+  const currentQuestionItem = activeQuestions[currentQ];
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="max-w-4xl mx-auto space-y-6 animate-fadeIn">
+      {/* Aptitude Category Tabs Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div>
-          <h2 className="text-2xl font-black">Online Assessment</h2>
-          <p className="text-xs text-slate-400">Practice questions with live scoring & star XP awards</p>
+          <h2 className="text-2xl font-black flex items-center gap-2">
+            <span>Aptitude Test Arena</span>
+            <span className="text-xs px-2.5 py-0.5 rounded-full bg-brand-500/10 text-brand-500 font-bold">BCA Prep</span>
+          </h2>
+          <p className="text-xs text-slate-400">Section-wise practice for campus placements & technical assessments</p>
         </div>
-        <span className="text-xs font-bold px-3 py-1 bg-brand-500/10 text-brand-500 rounded-full">
-          Question {currentQ + 1} of {questions.length}
+        <span className="text-xs font-bold px-3 py-1.5 bg-brand-500/10 text-brand-500 rounded-xl">
+          {activeQuestions.length} {activeQuestions.length === 1 ? 'MCQ' : 'MCQs'} in {activeCategory === 'All' ? 'Total' : activeCategory}
         </span>
       </div>
 
-      <div className="glass-card p-6 md:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-6">
-        <h3 className="text-lg font-bold">{questions[currentQ].question}</h3>
-
-        <div className="space-y-3">
-          {questions[currentQ].options.map((opt, idx) => {
-            const isSelected = answers[questions[currentQ].id] === idx;
-            return (
-              <button
-                key={idx}
-                onClick={() => handleSelectOption(questions[currentQ].id, idx)}
-                className={`w-full p-4 text-left text-xs font-bold rounded-2xl border transition ${
-                  isSelected 
-                    ? 'bg-brand-600 text-white border-brand-600' 
-                    : 'border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/50'
-                }`}
-              >
-                {opt}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="flex justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
-          <button
-            disabled={currentQ === 0}
-            onClick={() => setCurrentQ(prev => prev - 1)}
-            className="px-4 py-2 bg-slate-200 dark:bg-slate-800 text-xs font-bold rounded-xl disabled:opacity-50"
-          >
-            Previous
-          </button>
-
-          {currentQ < questions.length - 1 ? (
+      {/* Category Filter Pills */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        <button
+          onClick={() => handleCategorySwitch('All')}
+          className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 transition flex items-center space-x-1.5 ${
+            activeCategory === 'All'
+              ? 'bg-gradient-to-r from-brand-600 to-indigo-600 text-white shadow-md'
+              : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200 border border-slate-200 dark:border-slate-800'
+          }`}
+        >
+          <span>⚡</span>
+          <span>All Aptitude ({questions.length})</span>
+        </button>
+        {APTITUDE_CATEGORIES.map(cat => {
+          const count = questions.filter(q => (q.category || 'Quantitative Aptitude') === cat).length;
+          const meta = CATEGORY_META[cat] || { icon: '⚡' };
+          const isSelected = activeCategory === cat;
+          return (
             <button
-              onClick={() => setCurrentQ(prev => prev + 1)}
-              className="px-4 py-2 bg-brand-600 text-white text-xs font-bold rounded-xl"
+              key={cat}
+              onClick={() => handleCategorySwitch(cat)}
+              className={`px-3.5 py-2 rounded-xl text-xs font-bold shrink-0 transition flex items-center space-x-1.5 ${
+                isSelected
+                  ? 'bg-brand-600 text-white shadow-md'
+                  : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200 border border-slate-200 dark:border-slate-800'
+              }`}
             >
-              Next
+              <span>{meta.icon}</span>
+              <span>{cat}</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
+                {count}
+              </span>
             </button>
-          ) : (
-            <button
-              onClick={handleSubmitTest}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-md transition"
-            >
-              Submit Test & Save Score
-            </button>
-          )}
-        </div>
+          );
+        })}
       </div>
 
-      {submitted && (
-        <div className="p-6 glass-card rounded-3xl border border-emerald-500/30 text-center space-y-2 animate-fadeIn">
-          <div className="inline-flex p-3 rounded-full bg-emerald-500/10 text-emerald-500 mb-1">
-            <Icon name="check" className="w-8 h-8" />
+      {activeQuestions.length === 0 ? (
+        <div className="text-center py-12 glass-card rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-brand-500/10 text-brand-500 flex items-center justify-center">
+            <Icon name="test" className="w-7 h-7" />
           </div>
-          <h3 className="text-xl font-black text-emerald-500">Test Completed Successfully! 🎉</h3>
-          <p className="text-sm font-bold">You scored {finalScore} out of {questions.length} ({Math.round(finalScore / questions.length * 100)}%)</p>
-          <p className="text-xs text-slate-400">+{finalScore * 25} XP bonus points added to your student academic performance profile!</p>
+          <div>
+            <h3 className="text-lg font-black text-slate-800 dark:text-slate-200">No MCQs in {activeCategory}</h3>
+            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+              Faculty has not uploaded MCQs for this specific category yet. Try switching to another category.
+            </p>
+          </div>
+          <button
+            onClick={() => handleCategorySwitch('All')}
+            className="px-4 py-2 bg-brand-600 text-white font-bold text-xs rounded-xl"
+          >
+            View All MCQs
+          </button>
+        </div>
+      ) : !submitted ? (
+        /* Active Test Question Card */
+        <div className="glass-card p-6 md:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-6">
+          <div className="flex flex-wrap justify-between items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-4">
+            <div className="flex items-center gap-2">
+              <AptitudeCategoryBadge category={currentQuestionItem?.category || activeCategory} />
+              <span className="text-xs font-bold text-slate-400">
+                Question {currentQ + 1} of {activeQuestions.length}
+              </span>
+            </div>
+            {/* Progress indicator */}
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-slate-400 font-bold">
+                Answered {Object.keys(answers).length}/{activeQuestions.length}
+              </span>
+              <div className="w-24 h-2 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
+                <div 
+                  className="h-full bg-brand-500 rounded-full transition-all duration-300" 
+                  style={{ width: `${Math.round(((currentQ + 1) / activeQuestions.length) * 100)}%` }}
+                ></div>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-base md:text-lg font-extrabold text-slate-900 dark:text-white leading-relaxed">
+              {currentQuestionItem?.question}
+            </h3>
+
+            <div className="space-y-3">
+              {currentQuestionItem?.options.map((opt, idx) => {
+                const isSelected = answers[currentQuestionItem.id] === idx;
+                const letter = ['A', 'B', 'C', 'D'][idx] || idx;
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => handleSelectOption(currentQuestionItem.id, idx)}
+                    className={`w-full p-4 text-left text-xs font-bold rounded-2xl border transition flex items-center space-x-3 ${
+                      isSelected 
+                        ? 'bg-brand-600 text-white border-brand-600 shadow-md scale-[1.01]' 
+                        : 'border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800/50 text-slate-800 dark:text-slate-200'
+                    }`}
+                  >
+                    <span className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+                      isSelected ? 'bg-white/20 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400'
+                    }`}>
+                      {letter}
+                    </span>
+                    <span className="flex-1">{opt}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center pt-4 border-t border-slate-200 dark:border-slate-800">
+            <button
+              disabled={currentQ === 0}
+              onClick={() => setCurrentQ(prev => prev - 1)}
+              className="px-4 py-2 bg-slate-200 dark:bg-slate-800 text-xs font-bold rounded-xl disabled:opacity-40 transition"
+            >
+              Previous
+            </button>
+
+            {currentQ < activeQuestions.length - 1 ? (
+              <button
+                onClick={() => setCurrentQ(prev => prev + 1)}
+                className="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl shadow-md transition"
+              >
+                Next Question
+              </button>
+            ) : (
+              <button
+                onClick={handleSubmitTest}
+                className="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black rounded-xl shadow-lg transition flex items-center space-x-1.5"
+              >
+                <Icon name="check" className="w-4 h-4" />
+                <span>Submit & View Results</span>
+              </button>
+            )}
+          </div>
+        </div>
+      ) : (
+        /* Test Completion & Results Screen */
+        <div className="space-y-6">
+          <div className="p-8 glass-card rounded-3xl border border-emerald-500/30 text-center space-y-4 animate-fadeIn">
+            <div className="inline-flex p-4 rounded-2xl bg-emerald-500/10 text-emerald-500">
+              <Icon name="check" className="w-10 h-10" />
+            </div>
+            <div>
+              <h3 className="text-2xl font-black text-emerald-500">Test Completed Successfully! 🎉</h3>
+              <p className="text-xs text-slate-400 mt-1">Category: {activeCategory === 'All' ? 'Comprehensive Aptitude' : activeCategory}</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-lg mx-auto py-2">
+              <div className="p-4 bg-slate-100 dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Score</span>
+                <span className="text-2xl font-black text-brand-500">{finalScore} / {activeQuestions.length}</span>
+              </div>
+              <div className="p-4 bg-slate-100 dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Accuracy</span>
+                <span className="text-2xl font-black text-emerald-500">
+                  {Math.round((finalScore / activeQuestions.length) * 100)}%
+                </span>
+              </div>
+              <div className="p-4 bg-slate-100 dark:bg-slate-900/80 rounded-2xl border border-slate-200 dark:border-slate-800">
+                <span className="text-[10px] uppercase font-bold text-slate-400 block">Bonus XP</span>
+                <span className="text-2xl font-black text-amber-500">+{finalScore * 25} XP</span>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-3 pt-2">
+              <button
+                onClick={handleRetake}
+                className="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition flex items-center space-x-1.5"
+              >
+                <Icon name="clock" className="w-4 h-4" />
+                <span>Retake This Section</span>
+              </button>
+              <button
+                onClick={() => setShowReview(!showReview)}
+                className="px-5 py-2.5 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-bold transition"
+              >
+                {showReview ? 'Hide Solutions' : 'Review Questions & Explanations'}
+              </button>
+            </div>
+          </div>
+
+          {/* Solutions & Explanations Review Section */}
+          {showReview && (
+            <div className="space-y-4 animate-fadeIn">
+              <h3 className="text-lg font-black flex items-center gap-2">
+                <Icon name="book" className="w-5 h-5 text-brand-500" />
+                <span>Detailed Solutions & Explanations ({activeQuestions.length} MCQs)</span>
+              </h3>
+
+              <div className="space-y-4">
+                {activeQuestions.map((q, qIdx) => {
+                  const studentAns = answers[q.id];
+                  const isCorrect = studentAns === q.correct;
+                  const isSkipped = studentAns === undefined;
+
+                  return (
+                    <div 
+                      key={q.id}
+                      className={`glass-card p-6 rounded-3xl border ${
+                        isCorrect 
+                          ? 'border-emerald-500/40 bg-emerald-500/5' 
+                          : isSkipped 
+                            ? 'border-slate-300 dark:border-slate-700' 
+                            : 'border-red-500/40 bg-red-500/5'
+                      } space-y-3`}
+                    >
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-6 h-6 rounded-lg bg-slate-200 dark:bg-slate-800 text-xs font-bold flex items-center justify-center">
+                            {qIdx + 1}
+                          </span>
+                          <AptitudeCategoryBadge category={q.category || activeCategory} />
+                        </div>
+                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase ${
+                          isCorrect 
+                            ? 'bg-emerald-500/10 text-emerald-500' 
+                            : isSkipped 
+                              ? 'bg-slate-500/10 text-slate-400' 
+                              : 'bg-red-500/10 text-red-500'
+                        }`}>
+                          {isCorrect ? '✓ Correct (+25 XP)' : isSkipped ? '⚪ Skipped' : '✗ Incorrect'}
+                        </span>
+                      </div>
+
+                      <h4 className="text-sm font-bold text-slate-900 dark:text-white">{q.question}</h4>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        {q.options.map((opt, oIdx) => {
+                          const isOptionCorrect = oIdx === q.correct;
+                          const wasSelected = studentAns === oIdx;
+
+                          let badgeStyle = "bg-slate-100 dark:bg-slate-900/60 border-slate-200 dark:border-slate-800";
+                          if (isOptionCorrect) {
+                            badgeStyle = "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-emerald-500/40 font-bold";
+                          } else if (wasSelected && !isOptionCorrect) {
+                            badgeStyle = "bg-red-500/20 text-red-600 dark:text-red-400 border-red-500/40 line-through";
+                          }
+
+                          return (
+                            <div key={oIdx} className={`p-3 rounded-xl border ${badgeStyle} flex items-center justify-between`}>
+                              <span>{opt}</span>
+                              {isOptionCorrect && <span className="text-[10px] font-bold text-emerald-500">Correct Answer ✓</span>}
+                              {wasSelected && !isOptionCorrect && <span className="text-[10px] font-bold text-red-500">Your Choice ✗</span>}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {q.explanation && (
+                        <div className="p-3 bg-slate-100/80 dark:bg-slate-900/70 rounded-xl text-xs text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-800">
+                          <strong className="text-brand-500 block mb-0.5">Explanation:</strong>
+                          <p>{q.explanation}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -2759,11 +3446,17 @@ function AdminView({
   // Resources state
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState('');
+  const [semester, setSemester] = useState('Semester 2');
   const [author, setAuthor] = useState('');
   const [fileUrl, setFileUrl] = useState('');
   const [fileMeta, setFileMeta] = useState(null);
+  const [isReadingFile, setIsReadingFile] = useState(false);
+  const [fileInputKey, setFileInputKey] = useState(Date.now());
 
-  // Question state
+  // Aptitude Question state
+  const [questionCategory, setQuestionCategory] = useState('Quantitative Aptitude');
+  const [questionExplanation, setQuestionExplanation] = useState('');
+  const [manageCategoryFilter, setManageCategoryFilter] = useState('All');
   const [questionText, setQuestionText] = useState('');
   const [opt0, setOpt0] = useState('');
   const [opt1, setOpt1] = useState('');
@@ -2777,82 +3470,113 @@ function AdminView({
 
   const handleNoteSubmit = (e) => {
     e.preventDefault();
+    if (!title.trim() || !subject.trim()) return;
+
     const finalFileName = fileMeta ? fileMeta.name : `${(title || 'resource').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()}.pdf`;
     const finalFileType = fileMeta ? fileMeta.type : 'pdf';
-    const finalAuthor = author || currentUser?.name || "Faculty";
+    const finalAuthor = author.trim() || currentUser?.name || "Faculty";
+    const noteId = Date.now();
 
-    onAddNote({
-      id: Date.now(),
-      title,
-      subject,
-      semester: "Semester 2",
+    const newNote = {
+      id: noteId,
+      title: title.trim(),
+      subject: subject.trim(),
+      semester: semester || "Semester 2",
       author: finalAuthor,
       downloads: 0,
       rating: 5.0,
       fileUrl: fileUrl || "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
       fileType: finalFileType,
       fileName: finalFileName
-    });
+    };
+
+    onAddNote(newNote);
+    if (fileUrl && fileUrl.startsWith('data:')) {
+      saveFileToIDB(noteId, fileUrl);
+    }
 
     // College Email API trigger
     if (sendEmailNotification && onDispatchNotification) {
       const dispatched = onDispatchNotification({
         type: 'Study Note',
-        title,
-        subject,
+        title: newNote.title,
+        subject: newNote.subject,
         author: finalAuthor,
         fileName: finalFileName
       });
-      setApiSuccessMsg(`College Email API Dispatched! Direct notification sent to ${dispatched.recipientCount} registered BCA student email(s).`);
-      setTimeout(() => setApiSuccessMsg(''), 7000);
+      setApiSuccessMsg(`✅ Resource published to Notes Library! Direct college email notification dispatched to ${dispatched.recipientCount} registered BCA student email(s).`);
+    } else {
+      setApiSuccessMsg('✅ Resource published to Notes Library successfully!');
     }
+    setTimeout(() => setApiSuccessMsg(''), 7000);
 
     setTitle('');
     setSubject('');
     setAuthor('');
     setFileUrl('');
     setFileMeta(null);
+    setFileInputKey(Date.now());
   };
 
   const handleFileUploadChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      const localUrl = URL.createObjectURL(file);
-      setFileUrl(localUrl);
-      setFileMeta({ name: file.name, type: getExt(file.name), size: (file.size / 1024).toFixed(0) + ' KB' });
+      const ext = getExt(file.name);
+      setFileMeta({ name: file.name, type: ext, size: (file.size / 1024).toFixed(0) + ' KB' });
+      setIsReadingFile(true);
+      const reader = new FileReader();
+      reader.onload = (loadEvt) => {
+        setFileUrl(loadEvt.target.result);
+        setIsReadingFile(false);
+      };
+      reader.onerror = () => {
+        try {
+          const localUrl = URL.createObjectURL(file);
+          setFileUrl(localUrl);
+        } catch (err) {}
+        setIsReadingFile(false);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
   const handleQuestionSubmit = (e) => {
     e.preventDefault();
-    if (!questionText || !opt0 || !opt1) return;
+    if (!questionText.trim() || !opt0.trim() || !opt1.trim()) return;
     
-    onAddQuestion({
+    const newQ = {
       id: Date.now(),
-      question: questionText,
-      options: [opt0, opt1, opt2 || "N/A", opt3 || "N/A"].filter(Boolean),
-      correct: Number(correctIndex)
-    });
+      category: questionCategory,
+      question: questionText.trim(),
+      options: [opt0.trim(), opt1.trim(), opt2.trim() || "N/A", opt3.trim() || "N/A"].filter(Boolean),
+      correct: Number(correctIndex),
+      explanation: questionExplanation.trim() || undefined
+    };
+
+    onAddQuestion(newQ);
 
     // College Email API trigger
     if (sendEmailNotification && onDispatchNotification) {
       const titleShort = questionText.length > 50 ? questionText.slice(0, 47) + '...' : questionText;
       const dispatched = onDispatchNotification({
         type: 'Mock Assessment',
-        title: titleShort,
-        subject: 'BCA Aptitude & Technical MCQs',
+        title: `[${questionCategory}] ${titleShort}`,
+        subject: `BCA Aptitude MCQs (${questionCategory})`,
         author: currentUser?.name || 'Faculty',
-        fileName: 'Mock_Test_Question.pdf'
+        fileName: 'Aptitude_MCQ_Question.pdf'
       });
-      setApiSuccessMsg(`College Email API Dispatched! Direct notification sent to ${dispatched.recipientCount} registered BCA student email(s).`);
-      setTimeout(() => setApiSuccessMsg(''), 7000);
+      setApiSuccessMsg(`✅ ${questionCategory} MCQ added & published to Student Aptitude Section! Direct alert dispatched to ${dispatched.recipientCount} student(s).`);
+    } else {
+      setApiSuccessMsg(`✅ ${questionCategory} MCQ added & published to Student Aptitude Section successfully!`);
     }
+    setTimeout(() => setApiSuccessMsg(''), 7000);
 
     setQuestionText('');
     setOpt0('');
     setOpt1('');
     setOpt2('');
     setOpt3('');
+    setQuestionExplanation('');
     setCorrectIndex(0);
   };
 
@@ -2895,7 +3619,7 @@ function AdminView({
             onClick={() => setAdminTab('questions')}
             className={`px-3 py-1.5 rounded-xl transition ${adminTab === 'questions' ? 'bg-brand-600 text-white shadow' : 'text-slate-500 hover:text-slate-900 dark:hover:text-white'}`}
           >
-            Mock Tests ({questions.length})
+            Aptitude & MCQs ({questions.length})
           </button>
           <button
             onClick={() => setAdminTab('users')}
@@ -3067,7 +3791,7 @@ function AdminView({
               <input
                 type="text"
                 required
-                placeholder="Document Title"
+                placeholder="Document Title (e.g. Python Complete Notes)"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 className="p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs outline-none"
@@ -3075,7 +3799,7 @@ function AdminView({
               <input
                 type="text"
                 required
-                placeholder="Subject"
+                placeholder="Subject (e.g. Python, DBMS, Java)"
                 value={subject}
                 onChange={(e) => setSubject(e.target.value)}
                 className="p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs outline-none"
@@ -3088,13 +3812,28 @@ function AdminView({
                 onChange={(e) => setAuthor(e.target.value)}
                 className="p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs outline-none"
               />
+              <select
+                value={semester}
+                onChange={(e) => setSemester(e.target.value)}
+                className="p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs outline-none font-semibold text-slate-800 dark:text-slate-200"
+              >
+                <option value="Semester 1">Semester 1</option>
+                <option value="Semester 2">Semester 2</option>
+                <option value="Semester 3">Semester 3</option>
+                <option value="Semester 4">Semester 4</option>
+                <option value="Semester 5">Semester 5</option>
+                <option value="Semester 6">Semester 6</option>
+              </select>
               
-              <div className="flex flex-col space-y-1">
+              <div className="md:col-span-2 flex flex-col space-y-1">
                 <div className="flex items-center space-x-2">
                   <label className="flex-1 flex items-center justify-center space-x-2 p-2.5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs cursor-pointer hover:border-brand-500 transition">
                     <Icon name="upload" className="w-4 h-4 text-brand-500" />
-                    <span className="truncate">{fileMeta ? `${fileMeta.name} (${fileMeta.size})` : "Upload PDF, Word, PPT, Excel, TXT or image..."}</span>
+                    <span className="truncate">
+                      {isReadingFile ? "Reading & preparing file..." : fileMeta ? `Selected: ${fileMeta.name} (${fileMeta.size})` : "Upload PDF, Word, PPT, Excel, TXT or image..."}
+                    </span>
                     <input
+                      key={fileInputKey}
                       type="file"
                       accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.png,.jpg,.jpeg"
                       onChange={handleFileUploadChange}
@@ -3139,9 +3878,11 @@ function AdminView({
 
               <button
                 type="submit"
-                className="md:col-span-2 py-3 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl transition"
+                disabled={isReadingFile}
+                className={`md:col-span-2 py-3 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl transition flex items-center justify-center space-x-2 ${isReadingFile ? 'opacity-50 cursor-not-allowed' : ''}`}
               >
-                Add Resource & Send Email Alert
+                <Icon name="plus" className="w-4 h-4" />
+                <span>{isReadingFile ? "Processing File..." : "Add Resource & Publish to Notes Library"}</span>
               </button>
             </form>
           </div>
@@ -3169,67 +3910,127 @@ function AdminView({
         </div>
       )}
 
-      {/* ==================== MOCK TEST QUESTIONS TAB ==================== */}
+      {/* ==================== APTITUDE TEST & MCQS TAB ==================== */}
       {adminTab === 'questions' && (
         <div className="space-y-6 animate-fadeIn">
-          {/* Upload Mock Test Question Section */}
-          <div className="glass-card p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4">
-            <h3 className="text-lg font-black flex items-center space-x-2">
-              <Icon name="test" className="w-5 h-5 text-brand-500" />
-              <span>Add New Mock Test Question</span>
-            </h3>
+          {/* Aptitude 4-Category KPI Overview */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {APTITUDE_CATEGORIES.map(cat => {
+              const count = questions.filter(q => (q.category || 'Quantitative Aptitude') === cat).length;
+              const meta = CATEGORY_META[cat] || { icon: '⚡', cls: 'text-brand-500' };
+              return (
+                <div 
+                  key={cat} 
+                  onClick={() => { setQuestionCategory(cat); setManageCategoryFilter(cat); }}
+                  className="glass-card p-5 rounded-3xl border border-slate-200 dark:border-slate-800 hover:border-brand-500 cursor-pointer transition flex items-center justify-between"
+                >
+                  <div className="space-y-1">
+                    <span className="text-2xl">{meta.icon}</span>
+                    <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400">{cat}</h4>
+                    <p className="text-2xl font-black text-slate-900 dark:text-white">{count} MCQs</p>
+                  </div>
+                  <span className="text-[10px] font-bold px-2 py-1 bg-brand-500/10 text-brand-500 rounded-lg">
+                    Select
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Add New Aptitude MCQ Question Section */}
+          <div className="glass-card p-6 md:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-5">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-200 dark:border-slate-800 pb-4">
+              <div>
+                <h3 className="text-lg font-black flex items-center space-x-2">
+                  <Icon name="test" className="w-5 h-5 text-brand-500" />
+                  <span>Add New Aptitude Test MCQ</span>
+                </h3>
+                <p className="text-xs text-slate-400">Create categorized MCQs for Quantitative, Logical, Verbal, and Data Interpretation sections</p>
+              </div>
+              <AptitudeCategoryBadge category={questionCategory} />
+            </div>
 
             <form onSubmit={handleQuestionSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Aptitude Section / Category *</label>
+                  <select
+                    value={questionCategory}
+                    onChange={(e) => setQuestionCategory(e.target.value)}
+                    className="w-full p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold outline-none"
+                  >
+                    <option value="Quantitative Aptitude">🧮 Quantitative Aptitude (Math, Ratios, Speed, Profit/Loss)</option>
+                    <option value="Logical Reasoning">🧩 Logical Reasoning (Sequences, Puzzles, Coding, Relations)</option>
+                    <option value="Verbal Ability">📝 Verbal Ability (English, Synonyms, Grammar, Vocab)</option>
+                    <option value="Data Interpretation">📈 Data Interpretation (Charts, Tables, Percentages)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Correct Answer Selection *</label>
+                  <select
+                    value={correctIndex}
+                    onChange={(e) => setCorrectIndex(e.target.value)}
+                    className="w-full p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold outline-none text-emerald-500"
+                  >
+                    <option value={0}>Option A is Correct Answer</option>
+                    <option value={1}>Option B is Correct Answer</option>
+                    <option value={2}>Option C is Correct Answer</option>
+                    <option value={3}>Option D is Correct Answer</option>
+                  </select>
+                </div>
+              </div>
+
               <div>
-                <label className="text-xs font-bold text-slate-400 block mb-1">Question Statement</label>
-                <input
-                  type="text"
+                <label className="text-xs font-bold text-slate-400 block mb-1">Question Statement *</label>
+                <textarea
                   required
-                  placeholder="e.g. What is the time complexity of binary search?"
+                  rows="2"
+                  placeholder="e.g. Find the missing number in the sequence: 3, 7, 15, 31, 63, ?"
                   value={questionText}
                   onChange={(e) => setQuestionText(e.target.value)}
                   className="w-full p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs outline-none"
-                />
+                ></textarea>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-400 block mb-1">Option A</label>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Option A *</label>
                   <input
                     type="text"
                     required
-                    placeholder="First option"
+                    placeholder="Enter choice A"
                     value={opt0}
                     onChange={(e) => setOpt0(e.target.value)}
                     className="w-full p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-400 block mb-1">Option B</label>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Option B *</label>
                   <input
                     type="text"
                     required
-                    placeholder="Second option"
+                    placeholder="Enter choice B"
                     value={opt1}
                     onChange={(e) => setOpt1(e.target.value)}
                     className="w-full p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-400 block mb-1">Option C (Optional)</label>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Option C</label>
                   <input
                     type="text"
-                    placeholder="Third option"
+                    placeholder="Enter choice C"
                     value={opt2}
                     onChange={(e) => setOpt2(e.target.value)}
                     className="w-full p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs outline-none"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-400 block mb-1">Option D (Optional)</label>
+                  <label className="text-xs font-bold text-slate-400 block mb-1">Option D</label>
                   <input
                     type="text"
-                    placeholder="Fourth option"
+                    placeholder="Enter choice D"
                     value={opt3}
                     onChange={(e) => setOpt3(e.target.value)}
                     className="w-full p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs outline-none"
@@ -3238,17 +4039,16 @@ function AdminView({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-slate-400 block mb-1">Correct Answer Index</label>
-                <select
-                  value={correctIndex}
-                  onChange={(e) => setCorrectIndex(e.target.value)}
+                <label className="text-xs font-bold text-slate-400 block mb-1">
+                  Explanation & Solution Method <span className="text-[10px] text-slate-500 font-normal">(Shown to students upon test review)</span>
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Formula: (previous * 2) + 1 gives (63 * 2) + 1 = 127."
+                  value={questionExplanation}
+                  onChange={(e) => setQuestionExplanation(e.target.value)}
                   className="w-full p-3 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs outline-none"
-                >
-                  <option value={0}>Option A</option>
-                  <option value={1}>Option B</option>
-                  <option value={2}>Option C</option>
-                  <option value={3}>Option D</option>
-                </select>
+                />
               </div>
 
               {/* Direct College Email API Broadcast Toggle */}
@@ -3286,31 +4086,109 @@ function AdminView({
 
               <button
                 type="submit"
-                className="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold rounded-xl transition"
+                className="w-full py-3.5 bg-gradient-to-r from-brand-600 to-indigo-600 hover:opacity-95 text-white text-xs font-black rounded-xl shadow-lg transition flex items-center justify-center space-x-2"
               >
-                Add Mock Question & Send Email Alert
+                <Icon name="plus" className="w-4 h-4" />
+                <span>Add {questionCategory} MCQ & Publish to Portal</span>
               </button>
             </form>
           </div>
 
-          {/* Manage Mock Questions */}
-          <div className="glass-card p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4">
-            <h3 className="text-lg font-black">Manage Mock Questions</h3>
-            <div className="space-y-3">
-              {questions.map(q => (
-                <div key={q.id} className="flex justify-between items-center p-3 rounded-xl border border-slate-200 dark:border-slate-800">
-                  <div>
-                    <h4 className="font-bold text-xs">{q.question}</h4>
-                    <p className="text-[10px] text-slate-400">Options: {q.options.join(', ')}</p>
-                  </div>
-                  <button 
-                    onClick={() => onDeleteQuestion(q.id)}
-                    className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg transition"
+          {/* Manage Existing Aptitude Questions Section */}
+          <div className="glass-card p-6 md:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+              <div>
+                <h3 className="text-lg font-black">Manage Aptitude & Mock Questions</h3>
+                <p className="text-xs text-slate-400">Filter and audit existing MCQs by aptitude section</p>
+              </div>
+              <span className="text-xs font-bold px-3 py-1 bg-brand-500/10 text-brand-500 rounded-xl">
+                {questions.length} Total MCQs
+              </span>
+            </div>
+
+            {/* Filter by Category */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+              <button
+                onClick={() => setManageCategoryFilter('All')}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition ${
+                  manageCategoryFilter === 'All'
+                    ? 'bg-brand-600 text-white shadow'
+                    : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200 border border-slate-200 dark:border-slate-800'
+                }`}
+              >
+                All Sections ({questions.length})
+              </button>
+              {APTITUDE_CATEGORIES.map(cat => {
+                const count = questions.filter(q => (q.category || 'Quantitative Aptitude') === cat).length;
+                const isSelected = manageCategoryFilter === cat;
+                return (
+                  <button
+                    key={cat}
+                    onClick={() => setManageCategoryFilter(cat)}
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition ${
+                      isSelected
+                        ? 'bg-brand-600 text-white shadow'
+                        : 'bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-200 border border-slate-200 dark:border-slate-800'
+                    }`}
                   >
-                    <Icon name="trash" className="w-4 h-4" />
+                    {cat} ({count})
                   </button>
-                </div>
-              ))}
+                );
+              })}
+            </div>
+
+            {/* Questions List */}
+            <div className="space-y-3 pt-2">
+              {questions
+                .filter(q => manageCategoryFilter === 'All' || (q.category || 'Quantitative Aptitude') === manageCategoryFilter)
+                .map((q, qIndex) => (
+                  <div key={q.id} className="p-4 rounded-2xl border border-slate-200 dark:border-slate-800 bg-white/40 dark:bg-slate-900/40 hover:border-brand-500/40 transition space-y-2">
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="w-5 h-5 rounded-md bg-slate-200 dark:bg-slate-800 text-[10px] font-bold flex items-center justify-center">
+                          {qIndex + 1}
+                        </span>
+                        <AptitudeCategoryBadge category={q.category || 'Quantitative Aptitude'} />
+                      </div>
+                      <button 
+                        onClick={() => onDeleteQuestion(q.id)}
+                        className="p-1.5 text-red-500 hover:bg-red-500/10 rounded-lg transition"
+                        title="Delete Question"
+                      >
+                        <Icon name="trash" className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    <h4 className="font-extrabold text-xs text-slate-900 dark:text-white leading-relaxed">
+                      {q.question}
+                    </h4>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px]">
+                      {q.options.map((opt, oIdx) => {
+                        const isCorrect = oIdx === q.correct;
+                        return (
+                          <div 
+                            key={oIdx} 
+                            className={`px-2.5 py-1.5 rounded-lg border flex items-center justify-between ${
+                              isCorrect 
+                                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400 font-bold' 
+                                : 'bg-slate-100/60 dark:bg-slate-800/60 border-slate-200/60 dark:border-slate-700/60 text-slate-600 dark:text-slate-400'
+                            }`}
+                          >
+                            <span>{['A', 'B', 'C', 'D'][oIdx]}: {opt}</span>
+                            {isCorrect && <span className="text-[9px] font-black uppercase text-emerald-500">Correct ✓</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {q.explanation && (
+                      <p className="text-[10px] text-slate-400 bg-slate-100/50 dark:bg-slate-800/40 p-2 rounded-lg">
+                        <strong className="text-brand-500">Explanation:</strong> {q.explanation}
+                      </p>
+                    )}
+                  </div>
+                ))}
             </div>
           </div>
         </div>

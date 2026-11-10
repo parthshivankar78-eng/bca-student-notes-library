@@ -227,19 +227,14 @@ function DashboardCharts({ studentData }) {
 
 const INITIAL_REVIEWS = [
   { name: 'Riya S.', course: 'BCA • Sem 2', emoji: '🤩', text: 'The DBMS notes saved my exam prep. Everything in one place!' },
-  { name: 'Aman K.', course: 'BBA • Sem 4', emoji: '😊', text: 'Mock tests feel just like the real thing. Really helpful.' },
+  { name: 'Aman K.', course: 'BCA • Sem 4', emoji: '😊', text: 'Mock tests feel just like the real thing. Really helpful.' },
+  { name: 'Parth.', course: 'BCA • Sem 3', emoji: '😊', text: 'Most helpfull for me to exam time.' },
   { name: 'Sneha P.', course: 'BCA • Sem 2', emoji: '🤩', text: 'Love the dark mode and the quick search for notes.' },
-  { name: 'Rohit D.', course: 'B.Tech • Sem 6', emoji: '😊', text: 'Previous year papers are easy to find. Great work, faculty!' },
-  { name: 'Pooja M.', course: 'MCA • Sem 1', emoji: '🤩', text: 'The aptitude practice boosted my placement confidence.' },
+  { name: 'Rohit D.', course: 'BCA • Sem 6', emoji: '😊', text: 'Previous year papers are easy to find. Great work, faculty!' },
+  { name: 'Pooja M.', course: 'BCA • Sem 1', emoji: '🤩', text: 'The aptitude practice boosted my placement confidence.' },
   { name: 'Karan T.', course: 'BCA • Sem 2', emoji: '😊', text: 'Clean dashboard, and I can track my attendance easily.' }
 ];
 
-const INITIAL_NOTES = [
-  { id: 1, title: "DBMS Complete Module 1-4", subject: "DBMS", semester: "Semester 2", author: "Prof. K. Verma", downloads: 342, rating: 4.8, fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" },
-  { id: 2, title: "Data Structures - Trees & Graphs", subject: "Data Structures", semester: "Semester 2", author: "Dr. A. Mehta", downloads: 512, rating: 4.9, fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" },
-  { id: 3, title: "Web Tech HTML/CSS Cheat Sheet", subject: "Web Technology", semester: "Semester 2", author: "Prof. S. Gupta", downloads: 219, rating: 4.6, fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" },
-  { id: 4, title: "C++ OOP Concepts Notes", subject: "C++", semester: "Semester 2", author: "Prof. K. Verma", downloads: 189, rating: 4.7, fileUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf" }
-];
 
 const APTITUDE_CATEGORIES = [
   'Quantitative Aptitude',
